@@ -1,9 +1,11 @@
 <?php
+error_reporting(1);
+
 require 'vendor/autoload.php';
 
-echo 'Try';
 try{
-	$qr = QuoteRoller\QuoteRoller();
+	$qr = new QuoteRoller\QuoteRoller();
+	
 }catch (Exception $e){
 	echo $e->getMessgae();
-}	
+}

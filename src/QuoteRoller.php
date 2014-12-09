@@ -1,17 +1,17 @@
-<?php
+<?php 
 namespace QuoteRoller;
+
 /**
  * Enter Description
  */
-
-echo 'Included';
-
-/*Class QuoteRoller{
+class QuoteRoller{
     public function __construct(){
-    	echo 'Init __construct';
+    	echo 'Init construct<br>';
+        echo 'now: '.\Carbon\Carbon::now().'<br>';
     }
 
-    public function __call(){
-    	echo 'Init __call';
+    public static function init()
+    {
+    	echo 'Init';
     }
-}*/
+}
