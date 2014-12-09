@@ -1,15 +1,17 @@
 <?php
-require 'vendor/autoload.php';
+namespace QuoteRoller;
 /**
  * Enter Description
  */
 
-Class QuoteRoller{
-    public function __construct(){
+echo 'Included';
 
+/*Class QuoteRoller{
+    public function __construct(){
+    	echo 'Init __construct';
     }
 
     public function __call(){
-
+    	echo 'Init __call';
     }
-}
+}*/

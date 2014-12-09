@@ -6,6 +6,11 @@
         "guzzlehttp/guzzle": "~5.0@dev",
         "nesbot/Carbon": "*"
     },
+    "autoload": {
+        "psr-4": {
+            "QuoteRoller\\": "src/"
+        }
+    },    
     "license": "MIT",
     "authors": [
         {
