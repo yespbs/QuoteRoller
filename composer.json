@@ -2,7 +2,9 @@
     "name": "yespbs/quoteroller",
     "description": "QuoteRoller API",
     "require": {
-        "guzzlehttp/guzzle": "~5.0@dev"
+        "php": ">=5.3",  
+        "guzzlehttp/guzzle": "~5.0@dev",
+        "nesbot/Carbon": "*"
     },
     "license": "MIT",
     "authors": [
