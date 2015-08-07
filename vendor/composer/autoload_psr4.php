@@ -6,6 +6,7 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Symfony\\Component\\Translation\\' => array($vendorDir . '/symfony/translation'),
     'React\\Promise\\' => array($vendorDir . '/react/promise/src'),
     'QuoteRoller\\' => array($baseDir . '/src'),
     'GuzzleHttp\\Stream\\' => array($vendorDir . '/guzzlehttp/streams/src'),

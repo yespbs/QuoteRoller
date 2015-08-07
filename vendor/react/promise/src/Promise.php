@@ -2,7 +2,7 @@
 
 namespace React\Promise;
 
-class Promise implements CancellablePromiseInterface
+class Promise implements ExtendedPromiseInterface, CancellablePromiseInterface
 {
     private $canceller;
     private $result;
@@ -22,7 +22,7 @@ class Promise implements CancellablePromiseInterface
     public function then(callable $onFulfilled = null, callable $onRejected = null, callable $onProgress = null)
     {
         if (null !== $this->result) {
-            return $this->result->then($onFulfilled, $onRejected, $onProgress);
+            return $this->result()->then($onFulfilled, $onRejected, $onProgress);
         }
 
         if (null === $this->canceller) {
@@ -31,13 +31,58 @@ class Promise implements CancellablePromiseInterface
 
         $this->requiredCancelRequests++;
 
-        return new static($this->resolver($onFulfilled, $onRejected, $onProgress), function ($resolve, $reject, $progress) {
+        return new static($this->resolver($onFulfilled, $onRejected, $onProgress), function () {
             if (++$this->cancelRequests < $this->requiredCancelRequests) {
                 return;
             }
 
             $this->cancel();
         });
+    }
+
+    public function done(callable $onFulfilled = null, callable $onRejected = null, callable $onProgress = null)
+    {
+        if (null !== $this->result) {
+            return $this->result()->done($onFulfilled, $onRejected, $onProgress);
+        }
+
+        $this->handlers[] = function (ExtendedPromiseInterface $promise) use ($onFulfilled, $onRejected) {
+            $promise
+                ->done($onFulfilled, $onRejected);
+        };
+
+        if ($onProgress) {
+            $this->progressHandlers[] = $onProgress;
+        }
+    }
+
+    public function otherwise(callable $onRejected)
+    {
+        return $this->then(null, function ($reason) use ($onRejected) {
+            if (!_checkTypehint($onRejected, $reason)) {
+                return new RejectedPromise($reason);
+            }
+
+            return $onRejected($reason);
+        });
+    }
+
+    public function always(callable $onFulfilledOrRejected)
+    {
+        return $this->then(function ($value) use ($onFulfilledOrRejected) {
+            return resolve($onFulfilledOrRejected())->then(function () use ($value) {
+                return $value;
+            });
+        }, function ($reason) use ($onFulfilledOrRejected) {
+            return resolve($onFulfilledOrRejected())->then(function () use ($reason) {
+                return new RejectedPromise($reason);
+            });
+        });
+    }
+
+    public function progress(callable $onProgress)
+    {
+        return $this->then(null, null, $onProgress);
     }
 
     public function cancel()
@@ -51,23 +96,23 @@ class Promise implements CancellablePromiseInterface
 
     private function resolver(callable $onFulfilled = null, callable $onRejected = null, callable $onProgress = null)
     {
-        return function ($resolve, $reject, $progress) use ($onFulfilled, $onRejected, $onProgress) {
+        return function ($resolve, $reject, $notify) use ($onFulfilled, $onRejected, $onProgress) {
             if ($onProgress) {
-                $progressHandler = function ($update) use ($progress, $onProgress) {
+                $progressHandler = function ($update) use ($notify, $onProgress) {
                     try {
-                        $progress($onProgress($update));
+                        $notify($onProgress($update));
                     } catch (\Exception $e) {
-                        $progress($e);
+                        $notify($e);
                     }
                 };
             } else {
-                $progressHandler = $progress;
+                $progressHandler = $notify;
             }
 
-            $this->handlers[] = function (PromiseInterface $promise) use ($onFulfilled, $onRejected, $resolve, $reject, $progressHandler) {
+            $this->handlers[] = function (ExtendedPromiseInterface $promise) use ($onFulfilled, $onRejected, $resolve, $reject, $progressHandler) {
                 $promise
                     ->then($onFulfilled, $onRejected)
-                    ->then($resolve, $reject, $progressHandler);
+                    ->done($resolve, $reject, $progressHandler);
             };
 
             $this->progressHandlers[] = $progressHandler;
@@ -92,7 +137,7 @@ class Promise implements CancellablePromiseInterface
         $this->settle(reject($reason));
     }
 
-    private function progress($update = null)
+    private function notify($update = null)
     {
         if (null !== $this->result) {
             return;
@@ -103,15 +148,25 @@ class Promise implements CancellablePromiseInterface
         }
     }
 
-    private function settle(PromiseInterface $result)
+    private function settle(ExtendedPromiseInterface $promise)
     {
-        foreach ($this->handlers as $handler) {
-            $handler($result);
-        }
+        $handlers = $this->handlers;
 
         $this->progressHandlers = $this->handlers = [];
+        $this->result = $promise;
 
-        $this->result = $result;
+        foreach ($handlers as $handler) {
+            $handler($promise);
+        }
+    }
+
+    private function result()
+    {
+        while ($this->result instanceof self && null !== $this->result->result) {
+            $this->result = $this->result->result;
+        }
+
+        return $this->result;
     }
 
     private function call(callable $callback)
@@ -125,7 +180,7 @@ class Promise implements CancellablePromiseInterface
                     $this->reject($reason);
                 },
                 function ($update = null) {
-                    $this->progress($update);
+                    $this->notify($update);
                 }
             );
         } catch (\Exception $e) {
